@@ -8,18 +8,11 @@ const clientFiles = {
     common: [
         {
             condition: generator => generator.clientFramework === 'angularX',
-            templates: [
-                { file: 'angular/tsconfig-aot.json', renameTo: () => 'tsconfig-aot.json' },
-                { file: 'angular/tsconfig.json', renameTo: () => 'tsconfig.json' },
-                { file: 'angular/package.json', renameTo: () => 'package.json' },
-                { file: 'angular/eslintignore', renameTo: () => '.eslintignore' }
-            ]
+            templates: [{ file: 'angular/eslintignore', renameTo: () => '.eslintignore' }]
         },
         {
             condition: generator => generator.clientFramework === 'react',
             templates: [
-                { file: 'react/tsconfig.json', renameTo: () => 'tsconfig.json' },
-                { file: 'react/package.json', renameTo: () => 'package.json' },
                 { file: 'react/eslintrc.json', renameTo: () => '.eslintrc.json' },
                 { file: 'react/eslintignore', renameTo: () => '.eslintignore' }
             ]
@@ -77,6 +70,24 @@ function writeFiles() {
     return {
         overrideFiles() {
             this.writeFilesToDisk(clientFiles, this, false);
+        },
+        customizePackageJson() {
+            const packageJSON = this.fs.readJSON('package.json');
+            packageJSON.scripts['build:app'] = 'npm run build && cd server && npm run build';
+            packageJSON.scripts['start:app'] = 'npm run build && cd server && npm run start';
+            if (!this.skipServer) {
+                packageJSON.scripts.postInstall = 'cd server && npm run lint:fix';
+            }
+            // workaround for "Cannot find name 'Cheerio'" issue
+            // https://github.com/jhipster/generator-jhipster-nodejs/issues/167
+            // https://github.com/jhipster/generator-jhipster/issues/12593
+            packageJSON.devDependencies['@types/enzyme'] = '3.10.7';
+            this.fs.writeJSON('package.json', packageJSON);
+        },
+        customizeTsconfig() {
+            const tsconfigJSON = this.fs.readJSON('tsconfig.json');
+            tsconfigJSON.exclude = [`${this.SERVER_NODEJS_SRC_DIR}`];
+            this.fs.writeJSON('tsconfig.json', tsconfigJSON);
         }
     };
 }
